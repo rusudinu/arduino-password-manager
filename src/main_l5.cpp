@@ -37,6 +37,7 @@ void loop() {
  */
 
 // slave code
+/*
 #include <SPI.h>
 
 volatile int i = 0;
@@ -79,4 +80,40 @@ int8_t SPI_exchange(uint8_t send) {
     SPDR = send;
     while (!(SPSR & (1 << SPIF)));
     return SPDR;
+}
+ */
+
+#include <SPI.h>
+#include <SD.h>
+
+void setup() {
+    File myFile;
+    // read from the sd card
+    Serial.begin(115200);
+    Serial.println("SD card reader online.");
+    if (!SD.begin(8)) {
+        Serial.println("SD card initialization failed.");
+        //return;
+    }
+    Serial.println("SD card initialized.");
+    if (SD.exists("sd.txt")) {
+        myFile = SD.open("sd.txt");
+        if (myFile) {
+            Serial.println("sd.txt:");
+            while (myFile.available()) {
+                Serial.write(myFile.read());
+            }
+            myFile.close();
+        } else {
+            Serial.println("error opening sd.txt");
+        }
+    } else {
+        Serial.println("creating sd.txt");
+        myFile = SD.open("sd.txt", FILE_WRITE);
+        myFile.close();
+    }
+}
+
+void loop() {
+
 }
