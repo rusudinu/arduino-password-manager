@@ -35,4 +35,4 @@ add_executable(main_l2 src/main_l2.cpp)
 add_executable(main_l3 src/main_l3.cpp)
 add_executable(main_l4 src/main_l4.cpp)
 add_executable(main_l5 src/main_l5.cpp)
-
+add_executable(main_l6 src/main_l6.cpp)
