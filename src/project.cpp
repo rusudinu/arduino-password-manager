@@ -33,14 +33,13 @@ void setup() {
     Serial.begin(9600);
     lcd.begin(16, 2);
     irrecv.enableIRIn();
-    lcd.print("Boot");
     // Print a message to the LCD.
 }
 
 void loop() {
     // set the cursor to column 0, lllllline 1
     // (note: line 1 is the second row, since counting begins with 0):
-    //lcd.setCursor(0, 0);
+    lcd.setCursor(0, 0);
     if (irrecv.decode(&results))// Returns 0 if no data ready, 1 if data ready.
     {
         int x = results.value;// Results of decoding are stored in result.value
@@ -51,13 +50,25 @@ void loop() {
         irrecv.resume(); // Restart the ISR state machine and Receive the next value
     }
     switch (results.value) {
-        case 16580863 : {
-            lcd.print("OFF");
+        case 3810010651 : {
+            lcd.print("CH-");
             delay(1000);
             lcd.clear();
             break;
         }
-        case 16613503 : {
+        case 5316027 : {
+            lcd.print("CH");
+            delay(1000);
+            lcd.clear();
+            break;
+        }
+        case 4001918335 : {
+            lcd.print("CH+");
+            delay(1000);
+            lcd.clear();
+            break;
+        }
+        case 2747854299 : {
             lcd.print("VOL+");
             delay(1000);
             lcd.clear();
@@ -69,7 +80,7 @@ void loop() {
             lcd.clear();
             break;
         }
-        case 16589023 : {
+        case 1386468383 : {
             lcd.print("|<<");
             delay(1000);
             lcd.clear();
@@ -81,7 +92,7 @@ void loop() {
             lcd.clear();
             break;
         }
-        case 16605343 : {
+        case 16712445 : {
             lcd.print(">>|");
             delay(1000);
             lcd.clear();
@@ -93,32 +104,20 @@ void loop() {
             lcd.clear();
             break;
         }
-        case 16617583 : {
+        case 4034314555: {
             lcd.print("VOL-");
             delay(1000);
             lcd.clear();
             break;
         }
-        case 16601263 : {
-            lcd.print("UP");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 16593103 : {
-            lcd.print("0");
-            break;
-        }
-        case 16625743 : {
+        case 3855596927 : {
             lcd.print("EQ");
             delay(1000);
             lcd.clear();
             break;
         }
-        case 16609423 : {
-            lcd.print("ST/REPT");
-            delay(1000);
-            lcd.clear();
+        case 3238126971 : {
+            lcd.print("0");
             break;
         }
         case 2534850111 : {
@@ -149,7 +148,7 @@ void loop() {
             lcd.print("7");
             break;
         }
-        case 4294967295 : {
+        case 16730805 : {
             lcd.print("8");
             break;
         }
