@@ -29,25 +29,33 @@ decode_results results;
 
 
 void setup() {
-    // set up the LCD's number of columns and rows:
     Serial.begin(9600);
     lcd.begin(16, 2);
     irrecv.enableIRIn();
-    // Print a message to the LCD.
 }
 
+/*
+ *
+ * the program will have 4 states:
+ * - [unlocked] lock system
+ * - [unlocked] delete passwords (if any & will revert to a base password)
+ * - [unlocked] add new password
+ * - [locked] unlock system
+ *
+ * and also 2 modes:
+ * locked / unlocked (bool)
+ *
+ */
+
 void loop() {
-    // set the cursor to column 0, lllllline 1
-    // (note: line 1 is the second row, since counting begins with 0):
     lcd.setCursor(0, 0);
-    if (irrecv.decode(&results))// Returns 0 if no data ready, 1 if data ready.
-    {
-        int x = results.value;// Results of decoding are stored in result.value
+    if (irrecv.decode(&results)) {
+        int x = results.value;
         Serial.println(" ");
         Serial.print("Code: ");
-        Serial.println(results.value); //prints the value a a button press
+        Serial.println(results.value);
         Serial.println(" ");
-        irrecv.resume(); // Restart the ISR state machine and Receive the next value
+        irrecv.resume();
     }
     switch (results.value) {
         case 3810010651 : {
