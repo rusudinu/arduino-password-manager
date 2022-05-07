@@ -2,7 +2,7 @@ const int buttonPin = 2;    // the number of the pushbutton pin
 const int ledPin = 9;      // the number of the LED pin
 
 // Variables will change:
-int ledState = HIGH;         // the current state of the output pin
+int ledState = HIGH;         // the current currentState of the output pin
 int buttonState;             // the current reading from the input pin
 int lastButtonState = LOW;   // the previous reading from the input pin
 
@@ -16,7 +16,7 @@ void setup() {
     pinMode(buttonPin, INPUT_PULLUP);
     pinMode(ledPin, OUTPUT);
 
-    // set initial LED state
+    // set initial LED currentState
     digitalWrite(ledPin, ledState);
 
     EICRA |= (1 << ISC01);
@@ -169,7 +169,7 @@ const int buttonPin = 2;    // the number of the pushbutton pin
 const int ledPin = 9;      // the number of the LED pin
 
 // Variables will change:
-int ledState = HIGH;         // the current state of the output pin
+int ledState = HIGH;         // the current currentState of the output pin
 int buttonState;             // the current reading from the input pin
 int lastButtonState = LOW;   // the previous reading from the input pin
 
@@ -183,7 +183,7 @@ void setup() {
     pinMode(buttonPin, INPUT_PULLUP);
     pinMode(ledPin, OUTPUT);
 
-    // set initial LED state
+    // set initial LED currentState
     digitalWrite(ledPin, ledState);
 
     EICRA |= (1 << ISC01);
