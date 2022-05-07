@@ -29,10 +29,16 @@ void printDebugWarningMessage(const String &message) {
     }
 }
 
-void appendWordToDisplay(const String &word, bool firstRow = true) {
+void writeToDisplay(const String &word, bool append = true, bool firstRow = true) {
     if (firstRow) {
+        if (!append) {
+            currentState.display = "";
+        }
         currentState.display = String(currentState.display + word + " ");
     } else {
+        if (!append) {
+            currentState.displayRow2 = "";
+        }
         currentState.displayRow2 = String(currentState.displayRow2 + word + " ");
     }
     currentState.stateChanged = true;
@@ -144,7 +150,7 @@ String decodeRemoteCode(uint32_t code) {
 
 void generateFactoryPassword() {
     randomSeed(analogRead(0));
-    appendWordToDisplay(String(random(100000, 999999)), false);
+    writeToDisplay(String(random(100000, 999999)), true, false);
 }
 
 void initDisplay() {
