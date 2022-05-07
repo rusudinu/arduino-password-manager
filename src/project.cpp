@@ -1,36 +1,28 @@
-/*
-  LiquidCrystal
-
-  The circuit:
-   LCD RS pin to digital pin 12
-   LCD Enable pin to digital pin 11
-   LCD D4 pin to digital pin 5
-   LCD D5 pin to digital pin 4
-   LCD D6 pin to digital pin 3
-   LCD D7 pin to digital pin 2
-   LCD R/W pin to ground
-   LCD VSS pin to ground
-   LCD VCC pin to 5V
-   10K resistor:
-   ends to +5V and ground
-   wiper to LCD VO pin (pin 3)
-
-*/
-
-// include the library code:
 #include <LiquidCrystal.h>
 #include <IRremote.h>
+#include <EEPROM.h>
+#include <string.h>
 
-// initialize the library with the numbers of the interface pins
+#define CONTRAST 30
+
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
 const int RECV_PIN = 7;  //ir sensor to pin 7
 IRrecv irrecv(RECV_PIN);
 decode_results results;
+
+struct state {
+    bool stateChanged = false;
+    bool isLocked = true;
+    String display = "BOOTING...";
+} state;
 
 
 void setup() {
     Serial.begin(9600);
     lcd.begin(16, 2);
+    analogWrite(6, CONTRAST);
+    flushDisplay();
     irrecv.enableIRIn();
 }
 
@@ -47,8 +39,19 @@ void setup() {
  *
  */
 
+
+
 void loop() {
-    lcd.setCursor(0, 0);
+    // create state logic
+
+    if (state.stateChanged) {
+        clearDisplay();
+    }
+    if (state.isLocked) {
+        appendWordToDisplay("LOCKED");
+    }
+    flushDisplay();
+
     if (irrecv.decode(&results)) {
         int x = results.value;
         Serial.println(" ");
