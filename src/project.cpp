@@ -29,36 +29,8 @@ void printDebugWarningMessage(const String &message) {
     }
 }
 
-void writeToDisplay(const String &word, bool append = true, bool firstRow = true) {
-    if (firstRow) {
-        if (!append) {
-            currentState.display = "";
-        }
-        currentState.display = String(currentState.display + word + " ");
-    } else {
-        if (!append) {
-            currentState.displayRow2 = "";
-        }
-        currentState.displayRow2 = String(currentState.displayRow2 + word + " ");
-    }
-    currentState.stateChanged = true;
-}
-
-void flushDisplay() {
-    printDebugInfoMessage("Flushing display");
-    if (currentState.stateChanged) {
-        printDebugInfoMessage("Flushing display - currentState change found");
-        lcd.setCursor(0, 0);
-        lcd.print(currentState.display);
-        lcd.setCursor(0, 1);
-        lcd.print(currentState.displayRow2);
-        currentState.stateChanged = false;
-    } else {
-        printDebugInfoMessage("Flushing display - no currentState change found");
-    }
-}
-
 void setState(bool isLocked, int32_t debuggingEnabled, const String &display, const String &displayRow2) {
+    printDebugWarningMessage("setState(" + String(isLocked) + ", " + String(debuggingEnabled) + ", " + display + ", " + displayRow2 + ")");
     if (isLocked != currentState.isLocked) {
         currentState.isLocked = isLocked;
         currentState.stateChanged = true;
@@ -74,6 +46,36 @@ void setState(bool isLocked, int32_t debuggingEnabled, const String &display, co
     if (displayRow2.compareTo(currentState.displayRow2) != 0) {
         currentState.displayRow2 = displayRow2;
         currentState.stateChanged = true;
+    }
+}
+
+void writeToDisplay(const String &word, bool append = true, bool firstRow = true) {
+    if (firstRow) {
+        if (!append) {
+            setState(currentState.isLocked, currentState.debuggingLevelEnabled, String(word + " "), currentState.displayRow2);
+        } else {
+            setState(currentState.isLocked, currentState.debuggingLevelEnabled, String(currentState.display + word + " "), currentState.displayRow2);
+        }
+    } else {
+        if (!append) {
+            setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, String(word + " "));
+        } else {
+            setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, String(currentState.displayRow2 + word + " "));
+        }
+    }
+}
+
+void flushDisplay() {
+    printDebugInfoMessage("Flushing display");
+    if (currentState.stateChanged) {
+        printDebugInfoMessage("Flushing display - currentState change found");
+        lcd.setCursor(0, 0);
+        lcd.print(currentState.display);
+        lcd.setCursor(0, 1);
+        lcd.print(currentState.displayRow2);
+        currentState.stateChanged = false;
+    } else {
+        printDebugInfoMessage("Flushing display - no currentState change found");
     }
 }
 
