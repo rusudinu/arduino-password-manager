@@ -14,7 +14,7 @@ struct state {
     bool isLocked = true;
     int32_t debuggingLevelEnabled = 1; // 0 -> no logs, 1 -> warning, 2 -> warning + info
     String display = "LOCKED";
-    String displayRow2 = "remote unlock";
+    String displayRow2 = "unlock: ";
 } currentState;
 
 void printDebugInfoMessage(const String &message) {
@@ -142,12 +142,26 @@ String decodeRemoteCode(uint32_t code) {
     }
 }
 
-void setup() {
-    Serial.begin(9600);
+void generateFactoryPassword() {
+    randomSeed(analogRead(0));
+    appendWordToDisplay(String(random(100000, 999999)), false);
+}
+
+void initDisplay() {
     lcd.begin(16, 2);
     analogWrite(6, CONTRAST);
-    flushDisplay();
+}
+
+void initRemote() {
     irrecv.enableIRIn();
+}
+
+void setup() {
+    Serial.begin(9600);
+    initDisplay();
+    initRemote();
+    // TODO call this only if no default password is set in EEPROM
+    generateFactoryPassword();
 }
 
 /*
