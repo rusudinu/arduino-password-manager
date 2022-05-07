@@ -215,9 +215,9 @@ void loop() {
                         }
                     }
 
-                } else {
-                    printDebugWarningMessage("Unknown IR code received: " + String(irrecv.decodedIRData.decodedRawData));
                 }
+            } else {
+                printDebugWarningMessage("Unknown IR code received: " + String(irrecv.decodedIRData.decodedRawData));
             }
             irrecv.resume();
         }
