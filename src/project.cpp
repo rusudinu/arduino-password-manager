@@ -12,19 +12,19 @@ IRrecv irrecv(RECV_PIN);
 struct state {
     bool stateChanged = true;
     bool isLocked = true;
-    bool debuggingEnabled = false;
+    int32_t debuggingLevelEnabled = 1; // 0 -> no logs, 1 -> warning, 2 -> warning + info
     String display = "LOCKED";
     String displayRow2 = "remote unlock";
 } currentState;
 
 void printDebugInfoMessage(const String &message) {
-    if (currentState.debuggingEnabled) {
+    if (currentState.debuggingLevelEnabled > 1) {
         Serial.println("[INFO] " + message);
     }
 }
 
 void printDebugWarningMessage(const String &message) {
-    if (currentState.debuggingEnabled) {
+    if (currentState.debuggingLevelEnabled > 0) {
         Serial.println("[WARNING] " + message);
     }
 }
@@ -52,22 +52,93 @@ void flushDisplay() {
     }
 }
 
-void setState(bool isLocked, bool debuggingEnabled, const String &display, const String &displayRow2) {
+void setState(bool isLocked, int32_t debuggingEnabled, const String &display, const String &displayRow2) {
     if (isLocked != currentState.isLocked) {
         currentState.isLocked = isLocked;
         currentState.stateChanged = true;
     }
-    if (debuggingEnabled != currentState.debuggingEnabled) {
-        currentState.debuggingEnabled = debuggingEnabled;
+    if (debuggingEnabled != currentState.debuggingLevelEnabled) {
+        currentState.debuggingLevelEnabled = debuggingEnabled;
         currentState.stateChanged = true;
     }
-    if (display.compareTo(currentState.display)) {
+    if (display.compareTo(currentState.display) != 0) {
         currentState.display = display;
         currentState.stateChanged = true;
     }
-    if (displayRow2.compareTo(currentState.displayRow2)) {
+    if (displayRow2.compareTo(currentState.displayRow2) != 0) {
         currentState.displayRow2 = displayRow2;
         currentState.stateChanged = true;
+    }
+}
+
+String decodeRemoteCode(uint32_t code) {
+    switch (code) {
+        case 3125149440 : {
+            return "CH-";
+        }
+        case 3108437760 : {
+            return "CH";
+        }
+        case 3091726080 : {
+            return "CH+";
+        }
+        case 3141861120 : {
+            return "|<<";
+        }
+        case 3208707840 : {
+            return ">>|";
+        }
+        case 3158572800 : {
+            return ">||";
+        }
+        case 3927310080 : {
+            return "VOL+";
+        }
+        case 4161273600: {
+            return "VOL-";
+        }
+        case 4127850240 : {
+            return "EQ";
+        }
+        case 3910598400 : {
+            return "0";
+        }
+        case 3860463360 : {
+            return "FOL-";
+        }
+        case 4061003520 : {
+            return "FOL+";
+        }
+        case 4077715200 : {
+            return "1";
+        }
+        case 3877175040 : {
+            return "2";
+        }
+        case 2707357440 : {
+            return "3";
+        }
+        case 4144561920 : {
+            return "4";
+        }
+        case 3810328320 : {
+            return "5";
+        }
+        case 2774204160 : {
+            return "6";
+        }
+        case 3175284480 : {
+            return "7";
+        }
+        case 2907897600 : {
+            return "8";
+        }
+        case 3041591040 : {
+            return "9";
+        }
+        default: {
+            return "UNKNOWN";
+        }
     }
 }
 
@@ -99,122 +170,17 @@ void loop() {
     flushDisplay();
 
     if (irrecv.decode()) {
-        // TODO FIX THIS LATER
         if (irrecv.decodedIRData.decodedRawData != 0) {
-            Serial.println(" ");
-            Serial.print("Code: ");
-            Serial.println(irrecv.decodedIRData.decodedRawData);
-            Serial.println(" ");
+            String decodedValue = decodeRemoteCode(irrecv.decodedIRData.decodedRawData);
+            printDebugInfoMessage("Received IR data: " + String(irrecv.decodedIRData.decodedRawData));
+            printDebugInfoMessage("Decoded IR data: " + decodedValue);
+            if (decodedValue.compareTo("UNKNOWN") != 0) {
+                lcd.print(decodedValue);
+            } else {
+                printDebugWarningMessage("Unknown IR code received: " + String(irrecv.decodedIRData.decodedRawData));
+            }
         }
         irrecv.resume();
-    }
-    switch (irrecv.decodedIRData.decodedRawData) {
-        case 3125149440 : {
-            lcd.print("CH-");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 3108437760 : {
-            lcd.print("CH");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 3091726080 : {
-            lcd.print("CH+");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 3141861120 : {
-            lcd.print("|<<");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 3208707840 : {
-            lcd.print(">>|");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 3158572800 : {
-            lcd.print(">||");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 3927310080 : {
-            lcd.print("VOL+");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 4161273600: {
-            lcd.print("VOL-");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 4127850240 : {
-            lcd.print("EQ");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 3238126971 : {
-            lcd.print("0");
-            break;
-        }
-        case 3860463360 : {
-            lcd.print("FOL-");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 4061003520 : {
-            lcd.print("FOL+");
-            delay(1000);
-            lcd.clear();
-            break;
-        }
-        case 4077715200 : {
-            lcd.print("1");
-            break;
-        }
-        case 3877175040 : {
-            lcd.print("2");
-            break;
-        }
-        case 2707357440 : {
-            lcd.print("3");
-            break;
-        }
-        case 4144561920 : {
-            lcd.print("4");
-            break;
-        }
-        case 3810328320 : {
-            lcd.print("5");
-            break;
-        }
-        case 2774204160 : {
-            lcd.print("6");
-            break;
-        }
-        case 3175284480 : {
-            lcd.print("7");
-            break;
-        }
-        case 2907897600 : {
-            lcd.print("8");
-            break;
-        }
-        case 3041591040 : {
-            lcd.print("9");
-            break;
-        }
     }
 }
 
