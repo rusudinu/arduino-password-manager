@@ -1,6 +1,7 @@
 #include <LiquidCrystal.h>
 #include <IRremote.h>
 #include <EEPROM.h>
+#include <math.h>
 
 #define BAUD_RATE 9600
 
@@ -57,9 +58,10 @@ struct state {
     bool hidePassword = true;
     int32_t debuggingLevelEnabled = INFO; // 0 -> no logs, 1 -> warning, 2 -> warning + info
     String display = "LOCKED ";
-    String displayRow2 = "unlock: ";
+    String displayRow2 = "seed: ";
     String input = "";
     String password = "";
+    long seed = 0;
     String secrets = "my secret";
 } currentState;
 
@@ -209,11 +211,22 @@ String decodeRemoteCode(uint32_t code) {
     }
 }
 
-void generateFactoryPassword() {
+void generatePasswordBasedOnSeed() {
     randomSeed(analogRead(0));
-    String password = String(random(INITIAL_PASSWORD_LOW_BOUND, INITIAL_PASSWORD_UP_BOUND));
-    currentState.password = password;
-    writeToDisplay(password, true, false);
+    currentState.seed = random(INITIAL_PASSWORD_LOW_BOUND, INITIAL_PASSWORD_UP_BOUND);
+    long seedCopy = currentState.seed;
+    long m, sum = 0;
+    while (seedCopy > 0) {
+        m = seedCopy % 10;
+        sum = sum + m;
+        seedCopy = seedCopy / 10;
+    }
+    sum = sum * sum + currentState.seed * sum;
+    sum = sum % 100000 + currentState.seed;
+    sum = sum % 100000;
+    currentState.password = String(sum);
+    Serial.println(sum);
+    writeToDisplay(String(currentState.seed), true, false);
 }
 
 void initDisplay() {
@@ -229,8 +242,7 @@ void setup() {
     Serial.begin(BAUD_RATE);
     initDisplay();
     initRemote();
-    // TODO call this only if no default password is set in EEPROM
-    generateFactoryPassword();
+    generatePasswordBasedOnSeed();
 }
 
 /*
@@ -259,7 +271,7 @@ void loop() {
                     setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
                     if (currentState.input.length() > currentState.password.length()) {
                         printDebugInfoMessage("Password too long, resetting");
-                        setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+                        setState(currentState.isLocked, currentState.debuggingLevelEnabled, "LOCKED ", currentState.displayRow2, "");
                     } else if (currentState.input.length() == currentState.password.length()) {
                         if (currentState.input.compareTo(currentState.password) == 0) {
                             printDebugInfoMessage("Unlocked");
@@ -268,7 +280,7 @@ void loop() {
                             setState(false, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
                         } else {
                             printDebugInfoMessage("Password incorrect, resetting");
-                            setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+                            setState(currentState.isLocked, currentState.debuggingLevelEnabled, "LOCKED ", currentState.displayRow2, "");
                         }
                     }
                 }
