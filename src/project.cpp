@@ -1,21 +1,60 @@
 #include <LiquidCrystal.h>
 #include <IRremote.h>
 #include <EEPROM.h>
-#include <string.h>
 
 #define CONTRAST 30
 
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
-const int RECV_PIN = 7;  //ir sensor to pin 7
+const int RECV_PIN = 7;
 IRrecv irrecv(RECV_PIN);
 decode_results results;
 
 struct state {
-    bool stateChanged = false;
+    bool stateChanged = true;
     bool isLocked = true;
-    String display = "BOOTING...";
+    bool debuggingEnabled = false;
+    String display = "LOCKED";
+    String displayRow2 = "remote unlock";
 } state;
+
+struct state currentState;
+struct state oldState;
+
+void printDebugInfoMessage(const String &message) {
+    if (state.debuggingEnabled) {
+        Serial.println("[INFO] " + message);
+    }
+}
+
+void printDebugWarningMessage(const String &message) {
+    if (state.debuggingEnabled) {
+        Serial.println("[WARNING] " + message);
+    }
+}
+
+void appendWordToDisplay(const String &word, bool firstRow = true) {
+    if (firstRow) {
+        state.display = String(state.display + word + " ");
+    } else {
+        state.displayRow2 = String(state.displayRow2 + word + " ");
+    }
+    state.stateChanged = true;
+}
+
+void flushDisplay() {
+    printDebugInfoMessage("Flushing display");
+    if (state.stateChanged) {
+        printDebugInfoMessage("Flushing display - state change found");
+        lcd.setCursor(0, 0);
+        lcd.print(state.display);
+        lcd.setCursor(0, 1);
+        lcd.print(state.displayRow2);
+        state.stateChanged = false;
+    } else {
+        printDebugInfoMessage("Flushing display - no state change found");
+    }
+}
 
 
 void setup() {
@@ -39,17 +78,10 @@ void setup() {
  *
  */
 
-
-
 void loop() {
     // create state logic
 
-    if (state.stateChanged) {
-        clearDisplay();
-    }
-    if (state.isLocked) {
-        appendWordToDisplay("LOCKED");
-    }
+    // this should always be at the end of the loop
     flushDisplay();
 
     if (irrecv.decode(&results)) {
