@@ -66,11 +66,18 @@ void setState(bool isLocked, int32_t debuggingEnabled, const String &display, co
     }
 }
 
-void writeToDisplay(const String &word, bool append = true, bool firstRow = true) {
+void writeToDisplay(const String &word, bool append = true, bool firstRow = true, bool appendSpace = true) {
     if (firstRow) {
-        setState(currentState.isLocked, currentState.debuggingLevelEnabled, append ? String(currentState.display + word + " ") : String(word + " "), currentState.displayRow2);
+        setState(currentState.isLocked, currentState.debuggingLevelEnabled, append ? String(currentState.display + word + (appendSpace ? " " : "")) : String(word + (appendSpace ? " " : "")), currentState.displayRow2);
     } else {
-        setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, append ? String(currentState.displayRow2 + word + " ") : String(word + " "));
+        setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, append ? String(currentState.displayRow2 + word + (appendSpace ? " " : "")) : String(word + (appendSpace ? " " : "")));
+    }
+}
+
+void clearLCDLine(int line) {
+    lcd.setCursor(0, line);
+    for (int n = 0; n < 16; ++n) {
+        lcd.print(" ");
     }
 }
 
@@ -78,8 +85,10 @@ void flushDisplay() {
     printDebugInfoMessage("Flushing display");
     if (currentState.stateChanged) {
         printDebugInfoMessage("Flushing display - currentState change found");
+        clearLCDLine(0);
         lcd.setCursor(0, 0);
         lcd.print(currentState.display);
+        clearLCDLine(1);
         lcd.setCursor(0, 1);
         lcd.print(currentState.displayRow2);
         currentState.stateChanged = false;
@@ -161,7 +170,9 @@ String decodeRemoteCode(uint32_t code) {
 
 void generateFactoryPassword() {
     randomSeed(analogRead(0));
-    writeToDisplay(String(random(100000, 999999)), true, false);
+    String password = String(random(100000, 999999));
+    currentState.password = password;
+    writeToDisplay(password, true, false);
 }
 
 void initDisplay() {
@@ -203,27 +214,31 @@ void loop() {
             if (decodedValue.compareTo("UNKNOWN") != 0) {
                 setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, String(currentState.input + decodedValue));
                 if (currentState.isLocked) {
-                    writeToDisplay(currentState.hidePassword ? PASSWORD_COVER : decodedValue, true, true);
+                    writeToDisplay(currentState.hidePassword ? PASSWORD_COVER : decodedValue, true, true, false);
                     setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
                     if (currentState.input.length() > currentState.password.length()) {
+                        printDebugInfoMessage("Password too long, resetting");
                         setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
                     } else if (currentState.input.length() == currentState.password.length()) {
                         if (currentState.input.compareTo(currentState.password) == 0) {
+                            printDebugInfoMessage("Unlocked");
                             writeToDisplay("UNLOCKED", false, true);
                             writeToDisplay(currentState.secrets, false, false);
                             setState(false, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+                        } else {
+                            printDebugInfoMessage("Password incorrect, resetting");
+                            setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
                         }
                     }
-
                 }
             } else {
                 printDebugWarningMessage("Unknown IR code received: " + String(irrecv.decodedIRData.decodedRawData));
             }
-            irrecv.resume();
         }
+        irrecv.resume();
+    }
 
-        if (currentState.stateChanged) {
-            flushDisplay();
-        }
+    if (currentState.stateChanged) {
+        flushDisplay();
     }
 }
