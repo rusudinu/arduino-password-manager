@@ -3,6 +3,7 @@
 #include <EEPROM.h>
 
 #define CONTRAST 30
+#define PASSWORD_COVER "*"
 
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
@@ -12,9 +13,13 @@ IRrecv irrecv(RECV_PIN);
 struct state {
     bool stateChanged = true;
     bool isLocked = true;
-    int32_t debuggingLevelEnabled = 1; // 0 -> no logs, 1 -> warning, 2 -> warning + info
-    String display = "LOCKED";
+    bool hidePassword = false;
+    int32_t debuggingLevelEnabled = 2; // 0 -> no logs, 1 -> warning, 2 -> warning + info
+    String display = "LOCKED ";
     String displayRow2 = "unlock: ";
+    String input = "";
+    String password = "";
+    String secrets = "my awful secrets";
 } currentState;
 
 void printDebugInfoMessage(const String &message) {
@@ -29,8 +34,8 @@ void printDebugWarningMessage(const String &message) {
     }
 }
 
-void setState(bool isLocked, int32_t debuggingEnabled, const String &display, const String &displayRow2) {
-    printDebugWarningMessage("setState(" + String(isLocked) + ", " + String(debuggingEnabled) + ", " + display + ", " + displayRow2 + ")");
+void setState(bool isLocked, int32_t debuggingEnabled, const String &display, const String &displayRow2, const String &input = currentState.input, const String &password = currentState.password, const String &secrets = currentState.secrets) {
+    printDebugWarningMessage("setState(" + String(isLocked) + ", " + String(debuggingEnabled) + ", " + display + ", " + displayRow2 + ", " + input + ", " + password + ", " + secrets + ")");
     if (isLocked != currentState.isLocked) {
         currentState.isLocked = isLocked;
         currentState.stateChanged = true;
@@ -45,6 +50,18 @@ void setState(bool isLocked, int32_t debuggingEnabled, const String &display, co
     }
     if (displayRow2.compareTo(currentState.displayRow2) != 0) {
         currentState.displayRow2 = displayRow2;
+        currentState.stateChanged = true;
+    }
+    if (input.compareTo(currentState.input) != 0) {
+        currentState.input = input;
+        currentState.stateChanged = true;
+    }
+    if (password.compareTo(currentState.password) != 0) {
+        currentState.password = password;
+        currentState.stateChanged = true;
+    }
+    if (secrets.compareTo(currentState.secrets) != 0) {
+        currentState.secrets = secrets;
         currentState.stateChanged = true;
     }
 }
@@ -192,16 +209,29 @@ void loop() {
             printDebugInfoMessage("Received IR data: " + String(irrecv.decodedIRData.decodedRawData));
             printDebugInfoMessage("Decoded IR data: " + decodedValue);
             if (decodedValue.compareTo("UNKNOWN") != 0) {
-                lcd.print(decodedValue);
-            } else {
-                printDebugWarningMessage("Unknown IR code received: " + String(irrecv.decodedIRData.decodedRawData));
-            }
-        }
-        irrecv.resume();
-    }
+                setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, String(currentState.input + decodedValue));
+                if (currentState.isLocked) {
+                    writeToDisplay(PASSWORD_COVER, true, true);
+                    setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
+                    if (currentState.input.length() > currentState.password.length()) {
+                        setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+                    } else if (currentState.input.length() == currentState.password.length()) {
+                        if (currentState.input.compareTo(currentState.password) == 0) {
+                            writeToDisplay("UNLOCKED", false, true);
+                            writeToDisplay(currentState.secrets, false, false);
+                            setState(false, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+                        }
+                    }
 
-    if (currentState.stateChanged) {
-        flushDisplay();
+                } else {
+                    printDebugWarningMessage("Unknown IR code received: " + String(irrecv.decodedIRData.decodedRawData));
+                }
+            }
+            irrecv.resume();
+        }
+
+        if (currentState.stateChanged) {
+            flushDisplay();
+        }
     }
 }
-
