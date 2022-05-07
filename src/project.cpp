@@ -2,24 +2,65 @@
 #include <IRremote.h>
 #include <EEPROM.h>
 
+#define BAUD_RATE 9600
+
+#define LCD_RS  12
+#define LCD_EN  11
+#define LCD_CONTRAST 6
+#define LCD_D0  5
+#define LCD_D1  4
+#define LCD_D2  3
+#define LCD_D3  2
+#define LCD_ROWS 16
+#define LCD_COLS 2
 #define CONTRAST 30
+
+#define IR_RECV_PIN 7
+
 #define PASSWORD_COVER "*"
+#define INITIAL_PASSWORD_LOW_BOUND 100000
+#define INITIAL_PASSWORD_UP_BOUND 999999
 
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+#define NO_LOGS 0
+#define WARNINGS 1
+#define INFO 2
 
-const int RECV_PIN = 7;
-IRrecv irrecv(RECV_PIN);
+#define CH_M 3125149440
+#define CH 3108437760
+#define CH_P 3091726080
+#define PREV 3141861120
+#define NEXT 3208707840
+#define PLAY 3158572800
+#define VOL_P 3927310080
+#define VOL_M 4161273600
+#define EQ 4127850240
+#define ZERO 3910598400
+#define FOL_M 3860463360
+#define FOL_P 4061003520
+#define ONE  4077715200
+#define TWO 3877175040
+#define THREE 2707357440
+#define FOUR 4144561920
+#define FIVE 3810328320
+#define SIX 2774204160
+#define SEVEN 3175284480
+#define EIGHT 2907897600
+#define NINE 3041591040
+
+
+LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D0, LCD_D1, LCD_D2, LCD_D3);
+IRrecv irrecv(IR_RECV_PIN);
 
 struct state {
     bool stateChanged = true;
     bool isLocked = true;
     bool hidePassword = true;
-    int32_t debuggingLevelEnabled = 2; // 0 -> no logs, 1 -> warning, 2 -> warning + info
+    int32_t debuggingLevelEnabled = INFO; // 0 -> no logs, 1 -> warning, 2 -> warning + info
     String display = "LOCKED ";
     String displayRow2 = "unlock: ";
     String input = "";
     String password = "";
-    String secrets = "my awful secrets";
+    String secrets = "my secret";
 } currentState;
 
 void printDebugInfoMessage(const String &message) {
@@ -76,7 +117,7 @@ void writeToDisplay(const String &word, bool append = true, bool firstRow = true
 
 void clearLCDLine(int line) {
     lcd.setCursor(0, line);
-    for (int n = 0; n < 16; ++n) {
+    for (int n = 0; n < LCD_ROWS; ++n) {
         lcd.print(" ");
     }
 }
@@ -99,67 +140,67 @@ void flushDisplay() {
 
 String decodeRemoteCode(uint32_t code) {
     switch (code) {
-        case 3125149440 : {
+        case CH_M : {
             return "CH-";
         }
-        case 3108437760 : {
+        case CH: {
             return "CH";
         }
-        case 3091726080 : {
+        case CH_P: {
             return "CH+";
         }
-        case 3141861120 : {
+        case PREV : {
             return "|<<";
         }
-        case 3208707840 : {
+        case NEXT: {
             return ">>|";
         }
-        case 3158572800 : {
+        case PLAY: {
             return ">||";
         }
-        case 3927310080 : {
+        case VOL_P : {
             return "VOL+";
         }
-        case 4161273600: {
+        case VOL_M: {
             return "VOL-";
         }
-        case 4127850240 : {
+        case EQ: {
             return "EQ";
         }
-        case 3910598400 : {
+        case ZERO : {
             return "0";
         }
-        case 3860463360 : {
+        case FOL_M: {
             return "FOL-";
         }
-        case 4061003520 : {
+        case FOL_P: {
             return "FOL+";
         }
-        case 4077715200 : {
+        case ONE : {
             return "1";
         }
-        case 3877175040 : {
+        case TWO : {
             return "2";
         }
-        case 2707357440 : {
+        case THREE : {
             return "3";
         }
-        case 4144561920 : {
+        case FOUR : {
             return "4";
         }
-        case 3810328320 : {
+        case FIVE : {
             return "5";
         }
-        case 2774204160 : {
+        case SIX : {
             return "6";
         }
-        case 3175284480 : {
+        case SEVEN : {
             return "7";
         }
-        case 2907897600 : {
+        case EIGHT : {
             return "8";
         }
-        case 3041591040 : {
+        case NINE : {
             return "9";
         }
         default: {
@@ -170,14 +211,14 @@ String decodeRemoteCode(uint32_t code) {
 
 void generateFactoryPassword() {
     randomSeed(analogRead(0));
-    String password = String(random(100000, 999999));
+    String password = String(random(INITIAL_PASSWORD_LOW_BOUND, INITIAL_PASSWORD_UP_BOUND));
     currentState.password = password;
     writeToDisplay(password, true, false);
 }
 
 void initDisplay() {
-    lcd.begin(16, 2);
-    analogWrite(6, CONTRAST);
+    lcd.begin(LCD_ROWS, LCD_COLS);
+    analogWrite(LCD_CONTRAST, CONTRAST);
 }
 
 void initRemote() {
@@ -185,7 +226,7 @@ void initRemote() {
 }
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(BAUD_RATE);
     initDisplay();
     initRemote();
     // TODO call this only if no default password is set in EEPROM
