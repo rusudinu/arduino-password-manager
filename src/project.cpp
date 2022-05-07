@@ -1,7 +1,6 @@
 #include <LiquidCrystal.h>
 #include <IRremote.h>
 #include <EEPROM.h>
-#include <math.h>
 
 #define BAUD_RATE 9600
 
