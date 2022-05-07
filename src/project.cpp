@@ -186,11 +186,6 @@ void setup() {
  */
 
 void loop() {
-    // create currentState logic
-
-    // this should always be at the end of the loop
-    flushDisplay();
-
     if (irrecv.decode()) {
         if (irrecv.decodedIRData.decodedRawData != 0) {
             String decodedValue = decodeRemoteCode(irrecv.decodedIRData.decodedRawData);
@@ -203,6 +198,10 @@ void loop() {
             }
         }
         irrecv.resume();
+    }
+
+    if (currentState.stateChanged) {
+        flushDisplay();
     }
 }
 
