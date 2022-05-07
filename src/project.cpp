@@ -13,7 +13,7 @@ IRrecv irrecv(RECV_PIN);
 struct state {
     bool stateChanged = true;
     bool isLocked = true;
-    bool hidePassword = false;
+    bool hidePassword = true;
     int32_t debuggingLevelEnabled = 2; // 0 -> no logs, 1 -> warning, 2 -> warning + info
     String display = "LOCKED ";
     String displayRow2 = "unlock: ";
@@ -68,17 +68,9 @@ void setState(bool isLocked, int32_t debuggingEnabled, const String &display, co
 
 void writeToDisplay(const String &word, bool append = true, bool firstRow = true) {
     if (firstRow) {
-        if (!append) {
-            setState(currentState.isLocked, currentState.debuggingLevelEnabled, String(word + " "), currentState.displayRow2);
-        } else {
-            setState(currentState.isLocked, currentState.debuggingLevelEnabled, String(currentState.display + word + " "), currentState.displayRow2);
-        }
+        setState(currentState.isLocked, currentState.debuggingLevelEnabled, append ? String(currentState.display + word + " ") : String(word + " "), currentState.displayRow2);
     } else {
-        if (!append) {
-            setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, String(word + " "));
-        } else {
-            setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, String(currentState.displayRow2 + word + " "));
-        }
+        setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, append ? String(currentState.displayRow2 + word + " ") : String(word + " "));
     }
 }
 
@@ -211,7 +203,7 @@ void loop() {
             if (decodedValue.compareTo("UNKNOWN") != 0) {
                 setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, String(currentState.input + decodedValue));
                 if (currentState.isLocked) {
-                    writeToDisplay(PASSWORD_COVER, true, true);
+                    writeToDisplay(currentState.hidePassword ? PASSWORD_COVER : decodedValue, true, true);
                     setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
                     if (currentState.input.length() > currentState.password.length()) {
                         setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
