@@ -1,6 +1,7 @@
 #include <LiquidCrystal.h>
 #include <IRremote.h>
 #include <EEPROM.h>
+#include <math.h>
 
 #define BAUD_RATE 9600
 
@@ -57,9 +58,10 @@ struct state {
     bool hidePassword = true;
     int32_t debuggingLevelEnabled = INFO; // 0 -> no logs, 1 -> warning, 2 -> warning + info
     String display = "LOCKED ";
-    String displayRow2 = "unlock: ";
+    String displayRow2 = "seed: ";
     String input = "";
     String password = "";
+    long seed = 0;
     String secrets = "my secret";
 } currentState;
 
@@ -209,11 +211,13 @@ String decodeRemoteCode(uint32_t code) {
     }
 }
 
-void generateFactoryPassword() {
+void generatePasswordBasedOnSeed() {
     randomSeed(analogRead(0));
-    String password = String(random(INITIAL_PASSWORD_LOW_BOUND, INITIAL_PASSWORD_UP_BOUND));
-    currentState.password = password;
-    writeToDisplay(password, true, false);
+    currentState.seed = random(INITIAL_PASSWORD_LOW_BOUND, INITIAL_PASSWORD_UP_BOUND);
+    currentState.password = String((fmod(pow(log(sqrt(currentState.seed) + 2), log10(sqrt(currentState.seed))), 100000)));
+    currentState.password.replace(".", "7");
+    Serial.println(currentState.password);
+    writeToDisplay(String(currentState.seed), true, false);
 }
 
 void initDisplay() {
@@ -229,8 +233,7 @@ void setup() {
     Serial.begin(BAUD_RATE);
     initDisplay();
     initRemote();
-    // TODO call this only if no default password is set in EEPROM
-    generateFactoryPassword();
+    generatePasswordBasedOnSeed();
 }
 
 /*
