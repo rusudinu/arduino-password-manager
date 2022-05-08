@@ -224,7 +224,7 @@ void setState(int32_t state, int32_t debuggingEnabled, const String &display, co
 
 void writeToDisplay(const String &word, bool append, bool firstRow, bool appendSpace) {
     if (firstRow) {
-        setState(currentState.state, currentState.debuggingLevelEnabled, append ? String(currentState.display + word + (appendSpace ? " " : "")) : String(word + (appendSpace ? " " : "")), currentState.displayRow2);
+        setState(currentState.state, currentState.debuggingLevelEnabled, append ? String(String(currentState.state) + " " + currentState.display + word + (appendSpace ? " " : "")) : String(String(currentState.state) + " " + word + (appendSpace ? " " : "")), currentState.displayRow2);
     } else {
         setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, append ? String(currentState.displayRow2 + word + (appendSpace ? " " : "")) : String(word + (appendSpace ? " " : "")));
     }
@@ -256,18 +256,33 @@ void flushDisplay() {
 String decodeRemoteCode(uint32_t code) {
     switch (code) {
         case CH_M : {
+            if (currentState.state > LOCKED) {
+                // DELETE PASSWORDS
+            }
             return "CH-";
         }
         case CH: {
+            if (currentState.state > LOCKED) {
+                // VIEW PASSWORDS
+            }
             return "CH";
         }
         case CH_P: {
+            if (currentState.state > LOCKED) {
+                // ADD PASSWORDS
+            }
             return "CH+";
         }
         case PREV : {
+            if (currentState.state > LOCKED) {
+                // SCROLL RIGHT TROUGH PASSWORDS
+            }
             return "|<<";
         }
         case NEXT: {
+            if (currentState.state > LOCKED) {
+                // SCROLL LEFT TROUGH PASSWORDS
+            }
             return ">>|";
         }
         case PLAY: {
