@@ -102,7 +102,7 @@ struct state {
     String input = "";
     String password = "";
     long seed = 0;
-    String secrets = "012345 789111 abcdef";
+    String secrets = "";
 } currentState;
 
 int secretIndex = 0;
@@ -448,7 +448,16 @@ void deletePassword() {
 }
 
 void addPassword() {
-    currentState.secrets = currentState.secrets + " " + currentState.input;
+    if (currentState.input.length() < 6) {
+        while (currentState.input.length() < 6) {
+            currentState.input = "0" + currentState.input;
+        }
+    }
+    if (currentState.secrets.length() == 0) {
+        currentState.secrets = currentState.input;
+    } else {
+        currentState.secrets = currentState.secrets + " " + currentState.input;
+    }
     writeToDisplay(String(VIEW_PASSWORDS), false, true, true);
     setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
 }
@@ -511,12 +520,10 @@ String readString(int address) {
     int len = 0;
     unsigned char k;
     k = EEPROM.read(address);
-    while (k != '\0' && len < 400)   //Read until null character
-    {
+    while (k != '\0' && len < 400) {
         k = EEPROM.read(address + len);
         data[len] = k;
-        len++;
+        ++len;
     }
-    data[len] = '\0';
     return {data};
 }
