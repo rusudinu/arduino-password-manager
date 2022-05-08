@@ -412,7 +412,13 @@ bool isDigit(const String &word) {
 }
 
 void deletePassword() {
-
+    printDebugInfoMessage("Deleting password with index: " + String(secretIndex));
+    printDebugInfoMessage("First part: " + currentState.secrets.substring(0, secretIndex * 6 + secretIndex));
+    printDebugInfoMessage("Second part: " + currentState.secrets.substring((secretIndex + 1) * 6 + secretIndex + 1));
+    currentState.secrets = currentState.secrets.substring(0, secretIndex * 6 + secretIndex) + currentState.secrets.substring((secretIndex + 1) * 6 + secretIndex + 1);
+    printDebugInfoMessage("New secrets: " + currentState.secrets);
+    writeToDisplay(currentState.secrets.substring(secretIndex * 6 + secretIndex, (secretIndex + 1) * 6 + secretIndex), false, false);
+    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
 }
 
 void addPassword() {
