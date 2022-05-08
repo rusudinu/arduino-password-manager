@@ -145,12 +145,21 @@ void addPassword();
 
 void scrollPasswords(bool right);
 
+void readPasswordsFromEEPROM();
+
+void writePasswordsToEEPROM();
+
+String readString(int address);
+
+void writeString(int address, const String &data);
+
 #pragma endregion
 
 void setup() {
     Serial.begin(BAUD_RATE);
     initDisplay();
     initRemote();
+    readPasswordsFromEEPROM();
     generatePasswordBasedOnSeed();
 }
 
@@ -332,6 +341,9 @@ String decodeRemoteCode(uint32_t code) {
             return "FOL-";
         }
         case FOL_P: {
+            if (currentState.state == ADD_PASSWORD) {
+                writePasswordsToEEPROM();
+            }
             return "FOL+";
         }
         case ONE : {
@@ -470,4 +482,41 @@ void scrollPasswords(bool right) {
             printDebugInfoMessage("No more passwords found to the left.");
         }
     }
+}
+
+void readPasswordsFromEEPROM() {
+    currentState.secrets = readString(0);
+    printDebugInfoMessage("EEPROM size: " + String(EEPROM.length()));
+    printDebugInfoMessage("Read passwords from EEPROM: " + currentState.secrets);
+}
+
+void writePasswordsToEEPROM() {
+    printDebugInfoMessage("Writing passwords to EEPROM: " + currentState.secrets);
+    if (currentState.secrets.length() < EEPROM.length()) {
+        writeString(0, currentState.secrets);
+    } else {
+        printDebugWarningMessage("Passwords too long for EEPROM");
+    }
+}
+
+void writeString(int address, const String &data) {
+    for (int i = 0; i < data.length(); i++) {
+        EEPROM.write(address + i, data[i]);
+    }
+    EEPROM.write(address + data.length(), '\0');   //Add termination null character
+}
+
+String readString(int address) {
+    char data[400]; //Max 100 Bytes
+    int len = 0;
+    unsigned char k;
+    k = EEPROM.read(address);
+    while (k != '\0' && len < 400)   //Read until null character
+    {
+        k = EEPROM.read(address + len);
+        data[len] = k;
+        len++;
+    }
+    data[len] = '\0';
+    return {data};
 }
