@@ -44,6 +44,9 @@
 
 #define LOCKED 0
 #define UNLOCKED 1
+#define DELETE_PASSWORD 2
+#define VIEW_PASSWORDS 3
+#define ADD_PASSWORD 4
 
 #pragma endregion
 
@@ -94,7 +97,7 @@ struct state {
     int32_t state = LOCKED; // 0 -> locked, 1 -> unlocked
     bool hidePassword = true;
     int32_t debuggingLevelEnabled = INFO; // 0 -> no logs, 1 -> warning, 2 -> warning + info
-    String display = "LOCKED ";
+    String display = String(LOCKED) + " ";
     String displayRow2 = "seed: ";
     String input = "";
     String password = "";
@@ -131,6 +134,12 @@ void lock();
 void wrongPassword(const String &reason);
 
 bool isDigit(const String &word);
+
+void deletePassword();
+
+void addPassword();
+
+void scrollPasswords(bool right);
 
 #pragma endregion
 
@@ -174,6 +183,7 @@ void loop() {
     }
 
     if (currentState.stateChanged) {
+        printDebugInfoMessage("State change found");
         flushDisplay();
     }
 }
@@ -224,7 +234,7 @@ void setState(int32_t state, int32_t debuggingEnabled, const String &display, co
 
 void writeToDisplay(const String &word, bool append, bool firstRow, bool appendSpace) {
     if (firstRow) {
-        setState(currentState.state, currentState.debuggingLevelEnabled, append ? String(String(currentState.state) + " " + currentState.display + word + (appendSpace ? " " : "")) : String(String(currentState.state) + " " + word + (appendSpace ? " " : "")), currentState.displayRow2);
+        setState(currentState.state, currentState.debuggingLevelEnabled, append ? String(currentState.display + word + (appendSpace ? " " : "")) : String(word + (appendSpace ? " " : "")), currentState.displayRow2);
     } else {
         setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, append ? String(currentState.displayRow2 + word + (appendSpace ? " " : "")) : String(word + (appendSpace ? " " : "")));
     }
@@ -239,49 +249,47 @@ void clearLCDLine(int line) {
 
 void flushDisplay() {
     printDebugInfoMessage("Flushing display");
-    if (currentState.stateChanged) {
-        printDebugInfoMessage("Flushing display - currentState change found");
-        clearLCDLine(0);
-        lcd.setCursor(0, 0);
-        lcd.print(currentState.display);
-        clearLCDLine(1);
-        lcd.setCursor(0, 1);
-        lcd.print(currentState.displayRow2);
-        currentState.stateChanged = false;
-    } else {
-        printDebugInfoMessage("Flushing display - no currentState change found");
-    }
+    clearLCDLine(0);
+    lcd.setCursor(0, 0);
+    lcd.print(currentState.display);
+    clearLCDLine(1);
+    lcd.setCursor(0, 1);
+    lcd.print(currentState.displayRow2);
+    currentState.stateChanged = false;
 }
 
 String decodeRemoteCode(uint32_t code) {
     switch (code) {
         case CH_M : {
             if (currentState.state > LOCKED) {
-                // DELETE PASSWORDS
+                writeToDisplay(String(DELETE_PASSWORD), false, true);
+                setState(DELETE_PASSWORD, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
             }
             return "CH-";
         }
         case CH: {
             if (currentState.state > LOCKED) {
-                // VIEW PASSWORDS
+                writeToDisplay(String(VIEW_PASSWORDS), false, true);
+                setState(VIEW_PASSWORDS, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
             }
             return "CH";
         }
         case CH_P: {
             if (currentState.state > LOCKED) {
-                // ADD PASSWORDS
+                writeToDisplay(String(ADD_PASSWORD), false, true);
+                setState(ADD_PASSWORD, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
             }
             return "CH+";
         }
         case PREV : {
             if (currentState.state > LOCKED) {
-                // SCROLL RIGHT TROUGH PASSWORDS
+                scrollPasswords(true);
             }
             return "|<<";
         }
         case NEXT: {
             if (currentState.state > LOCKED) {
-                // SCROLL LEFT TROUGH PASSWORDS
+                scrollPasswords(false);
             }
             return ">>|";
         }
@@ -292,12 +300,19 @@ String decodeRemoteCode(uint32_t code) {
             return ">||";
         }
         case VOL_P : {
+            if (currentState.state == ADD_PASSWORD) {
+                addPassword();
+            }
             return "VOL+";
         }
         case VOL_M: {
+            if (currentState.state == DELETE_PASSWORD) {
+                deletePassword();
+            }
             return "VOL-";
         }
         case EQ: {
+            flushDisplay();
             return "EQ";
         }
         case ZERO : {
@@ -371,14 +386,14 @@ void initRemote() {
 
 void unlock() {
     printDebugInfoMessage("Unlocked");
-    writeToDisplay("UNLOCKED", false, true);
+    writeToDisplay(String(UNLOCKED), false, true, true);
     writeToDisplay(currentState.secrets, false, false);
     setState(UNLOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
 }
 
 void lock() {
     printDebugInfoMessage("Locked");
-    writeToDisplay("LOCKED", false, true, true);
+    writeToDisplay(String(LOCKED), false, true, true);
     writeToDisplay("seed:", false, false);
     generatePasswordBasedOnSeed();
     setState(LOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
@@ -386,10 +401,26 @@ void lock() {
 
 void wrongPassword(const String &reason) {
     printDebugInfoMessage("Wrong password, resetting: " + reason);
-    writeToDisplay("LOCKED", false, true, true);
+    writeToDisplay(String(LOCKED), false, true, true);
     setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
 }
 
 bool isDigit(const String &word) {
     return word.length() == 1 && word.toInt() >= 0 && word.toInt() <= 9;
+}
+
+void deletePassword() {
+
+}
+
+void addPassword() {
+
+}
+
+void scrollPasswords(bool right) {
+    if (right) {
+        // scroll to right
+    } else {
+        // scroll to left
+    }
 }
