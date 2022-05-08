@@ -2,7 +2,14 @@
 #include <IRremote.h>
 #include <EEPROM.h>
 
+#pragma region ARDUINO_CONSTANTS
+
 #define BAUD_RATE 9600
+#define IR_RECV_PIN 7
+
+#pragma endregion
+
+#pragma region LCD_CONSTANTS
 
 #define LCD_RS  12
 #define LCD_EN  11
@@ -15,15 +22,32 @@
 #define LCD_COLS 2
 #define CONTRAST 30
 
-#define IR_RECV_PIN 7
+#pragma endregion
+
+#pragma region PASSWORD_CONSTANTS
 
 #define PASSWORD_COVER "*"
 #define INITIAL_PASSWORD_LOW_BOUND 100000
 #define INITIAL_PASSWORD_UP_BOUND 999999
 
+#pragma endregion
+
+#pragma region LOG_LEVEL_CONSTANTS
+
 #define NO_LOGS 0
 #define WARNINGS 1
 #define INFO 2
+
+#pragma endregion
+
+#pragma region STATE_CONSTANTS
+
+#define LOCKED 0
+#define UNLOCKED 1
+
+#pragma endregion
+
+#pragma region REMOTE_CONSTANTS
 
 #define CH_M 3125149440
 #define CH 3108437760
@@ -47,13 +71,27 @@
 #define EIGHT 2907897600
 #define NINE 3041591040
 
+#pragma endregion
 
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D0, LCD_D1, LCD_D2, LCD_D3);
 IRrecv irrecv(IR_RECV_PIN);
 
+/*
+ *
+ * the program will have 4 states:
+ * - [unlocked] lock system
+ * - [unlocked] delete passwords (if any & will revert to a base password)
+ * - [unlocked] add new password
+ * - [locked] unlock system
+ *
+ * and also 2 modes:
+ * locked / unlocked (bool)
+ *
+ */
+
 struct state {
     bool stateChanged = true;
-    bool isLocked = true;
+    int32_t state = LOCKED; // 0 -> locked, 1 -> unlocked
     bool hidePassword = true;
     int32_t debuggingLevelEnabled = INFO; // 0 -> no logs, 1 -> warning, 2 -> warning + info
     String display = "LOCKED ";
@@ -63,6 +101,82 @@ struct state {
     long seed = 0;
     String secrets = "my secret";
 } currentState;
+
+#pragma region Function declarations
+
+void printDebugInfoMessage(const String &message);
+
+void printDebugWarningMessage(const String &message);
+
+void setState(int32_t state, int32_t debuggingEnabled, const String &display, const String &displayRow2, const String &input = currentState.input, const String &password = currentState.password, const String &secrets = currentState.secrets);
+
+void writeToDisplay(const String &word, bool append = true, bool firstRow = true, bool appendSpace = true);
+
+void clearLCDLine(int line);
+
+void flushDisplay();
+
+String decodeRemoteCode(uint32_t code);
+
+void generatePasswordBasedOnSeed();
+
+void initDisplay();
+
+void initRemote();
+
+void unlock();
+
+void lock();
+
+void wrongPassword(const String &reason);
+
+bool isDigit(const String &word);
+
+#pragma endregion
+
+void setup() {
+    Serial.begin(BAUD_RATE);
+    initDisplay();
+    initRemote();
+    generatePasswordBasedOnSeed();
+}
+
+void loop() {
+    if (irrecv.decode()) {
+        if (irrecv.decodedIRData.decodedRawData != 0) {
+            String decodedValue = decodeRemoteCode(irrecv.decodedIRData.decodedRawData);
+            printDebugInfoMessage("Received IR data: " + String(irrecv.decodedIRData.decodedRawData));
+            printDebugInfoMessage("Decoded IR data: " + decodedValue);
+            if (decodedValue.compareTo("UNKNOWN") != 0) {
+                bool isDigitV = isDigit(decodedValue);
+                if (isDigitV) {
+                    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, String(currentState.input + decodedValue));
+                }
+                if (currentState.state == LOCKED && isDigitV) {
+                    writeToDisplay(currentState.hidePassword ? PASSWORD_COVER : decodedValue, true, true, false);
+                    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
+                    if (currentState.input.length() > currentState.password.length()) {
+                        wrongPassword("input too long");
+                    } else if (currentState.input.length() == currentState.password.length()) {
+                        printDebugInfoMessage(currentState.input + " == " + currentState.password);
+                        if (currentState.input.compareTo(currentState.password) == 0) {
+                            unlock();
+                        } else {
+                            wrongPassword("wrong password");
+                        }
+                    }
+                }
+            } else {
+                printDebugWarningMessage("Unknown IR code received: " + String(irrecv.decodedIRData.decodedRawData));
+            }
+        }
+        irrecv.resume();
+    }
+
+    if (currentState.stateChanged) {
+        flushDisplay();
+    }
+}
 
 void printDebugInfoMessage(const String &message) {
     if (currentState.debuggingLevelEnabled > 1) {
@@ -76,10 +190,10 @@ void printDebugWarningMessage(const String &message) {
     }
 }
 
-void setState(bool isLocked, int32_t debuggingEnabled, const String &display, const String &displayRow2, const String &input = currentState.input, const String &password = currentState.password, const String &secrets = currentState.secrets) {
-    printDebugWarningMessage("setState(" + String(isLocked) + ", " + String(debuggingEnabled) + ", " + display + ", " + displayRow2 + ", " + input + ", " + password + ", " + secrets + ")");
-    if (isLocked != currentState.isLocked) {
-        currentState.isLocked = isLocked;
+void setState(int32_t state, int32_t debuggingEnabled, const String &display, const String &displayRow2, const String &input, const String &password, const String &secrets) {
+    printDebugWarningMessage("setState(" + String(state) + ", " + String(debuggingEnabled) + ", " + display + ", " + displayRow2 + ", " + input + ", " + password + ", " + secrets + ")");
+    if (state != currentState.state) {
+        currentState.state = state;
         currentState.stateChanged = true;
     }
     if (debuggingEnabled != currentState.debuggingLevelEnabled) {
@@ -108,11 +222,11 @@ void setState(bool isLocked, int32_t debuggingEnabled, const String &display, co
     }
 }
 
-void writeToDisplay(const String &word, bool append = true, bool firstRow = true, bool appendSpace = true) {
+void writeToDisplay(const String &word, bool append, bool firstRow, bool appendSpace) {
     if (firstRow) {
-        setState(currentState.isLocked, currentState.debuggingLevelEnabled, append ? String(currentState.display + word + (appendSpace ? " " : "")) : String(word + (appendSpace ? " " : "")), currentState.displayRow2);
+        setState(currentState.state, currentState.debuggingLevelEnabled, append ? String(currentState.display + word + (appendSpace ? " " : "")) : String(word + (appendSpace ? " " : "")), currentState.displayRow2);
     } else {
-        setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, append ? String(currentState.displayRow2 + word + (appendSpace ? " " : "")) : String(word + (appendSpace ? " " : "")));
+        setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, append ? String(currentState.displayRow2 + word + (appendSpace ? " " : "")) : String(word + (appendSpace ? " " : "")));
     }
 }
 
@@ -157,6 +271,9 @@ String decodeRemoteCode(uint32_t code) {
             return ">>|";
         }
         case PLAY: {
+            if (currentState.state > LOCKED) {
+                lock();
+            }
             return ">||";
         }
         case VOL_P : {
@@ -237,60 +354,27 @@ void initRemote() {
     irrecv.enableIRIn();
 }
 
-void setup() {
-    Serial.begin(BAUD_RATE);
-    initDisplay();
-    initRemote();
-    generatePasswordBasedOnSeed();
+void unlock() {
+    printDebugInfoMessage("Unlocked");
+    writeToDisplay("UNLOCKED", false, true);
+    writeToDisplay(currentState.secrets, false, false);
+    setState(UNLOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
 }
 
-/*
- *
- * the program will have 4 states:
- * - [unlocked] lock system
- * - [unlocked] delete passwords (if any & will revert to a base password)
- * - [unlocked] add new password
- * - [locked] unlock system
- *
- * and also 2 modes:
- * locked / unlocked (bool)
- *
- */
+void lock() {
+    printDebugInfoMessage("Locked");
+    writeToDisplay("LOCKED", false, true, true);
+    writeToDisplay("seed:", false, false);
+    generatePasswordBasedOnSeed();
+    setState(LOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+}
 
-void loop() {
-    if (irrecv.decode()) {
-        if (irrecv.decodedIRData.decodedRawData != 0) {
-            String decodedValue = decodeRemoteCode(irrecv.decodedIRData.decodedRawData);
-            printDebugInfoMessage("Received IR data: " + String(irrecv.decodedIRData.decodedRawData));
-            printDebugInfoMessage("Decoded IR data: " + decodedValue);
-            if (decodedValue.compareTo("UNKNOWN") != 0) {
-                setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, String(currentState.input + decodedValue));
-                if (currentState.isLocked) {
-                    writeToDisplay(currentState.hidePassword ? PASSWORD_COVER : decodedValue, true, true, false);
-                    setState(currentState.isLocked, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
-                    if (currentState.input.length() > currentState.password.length()) {
-                        printDebugInfoMessage("Password too long, resetting");
-                        setState(currentState.isLocked, currentState.debuggingLevelEnabled, "LOCKED ", currentState.displayRow2, "");
-                    } else if (currentState.input.length() == currentState.password.length()) {
-                        if (currentState.input.compareTo(currentState.password) == 0) {
-                            printDebugInfoMessage("Unlocked");
-                            writeToDisplay("UNLOCKED", false, true);
-                            writeToDisplay(currentState.secrets, false, false);
-                            setState(false, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
-                        } else {
-                            printDebugInfoMessage("Password incorrect, resetting");
-                            setState(currentState.isLocked, currentState.debuggingLevelEnabled, "LOCKED ", currentState.displayRow2, "");
-                        }
-                    }
-                }
-            } else {
-                printDebugWarningMessage("Unknown IR code received: " + String(irrecv.decodedIRData.decodedRawData));
-            }
-        }
-        irrecv.resume();
-    }
+void wrongPassword(const String &reason) {
+    printDebugInfoMessage("Wrong password, resetting: " + reason);
+    writeToDisplay("LOCKED", false, true, true);
+    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+}
 
-    if (currentState.stateChanged) {
-        flushDisplay();
-    }
+bool isDigit(const String &word) {
+    return word.length() == 1 && word.toInt() >= 0 && word.toInt() <= 9;
 }
