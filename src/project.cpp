@@ -135,6 +135,8 @@ void lock();
 
 void wrongPassword(const String &reason);
 
+void passwordTooLong();
+
 bool isDigit(const String &word);
 
 void deletePassword();
@@ -175,6 +177,12 @@ void loop() {
                         } else {
                             wrongPassword("wrong password");
                         }
+                    }
+                } else if (currentState.state == ADD_PASSWORD && isDigitV) {
+                    writeToDisplay(decodedValue, true, true, false);
+                    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
+                    if (currentState.input.length() > 6) {
+                        passwordTooLong();
                     }
                 }
             } else {
@@ -390,7 +398,7 @@ void unlock() {
     printDebugInfoMessage("Unlocked");
     writeToDisplay(String(UNLOCKED), false, true, true);
     writeToDisplay(currentState.secrets.substring(secretIndex * 6 + secretIndex, (secretIndex + 1) * 6 + secretIndex), false, false);
-    setState(UNLOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
+    setState(UNLOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
 }
 
 void lock() {
@@ -398,13 +406,19 @@ void lock() {
     writeToDisplay(String(LOCKED), false, true, true);
     writeToDisplay("seed:", false, false);
     generatePasswordBasedOnSeed();
-    setState(LOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
+    setState(LOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
 }
 
 void wrongPassword(const String &reason) {
     printDebugInfoMessage("Wrong password, resetting: " + reason);
     writeToDisplay(String(LOCKED), false, true, true);
-    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
+    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+}
+
+void passwordTooLong() {
+    printDebugInfoMessage("Password too long");
+    writeToDisplay(String(ADD_PASSWORD), false, true, true);
+    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
 }
 
 bool isDigit(const String &word) {
@@ -422,7 +436,9 @@ void deletePassword() {
 }
 
 void addPassword() {
-
+    currentState.secrets = currentState.secrets + " " + currentState.input;
+    writeToDisplay(String(VIEW_PASSWORDS), false, true, true);
+    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
 }
 
 int getNumberOfSecrets() {
