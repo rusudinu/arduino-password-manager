@@ -102,8 +102,10 @@ struct state {
     String input = "";
     String password = "";
     long seed = 0;
-    String secrets = "my secret";
+    String secrets = "012345 789111 abcdef";
 } currentState;
+
+int secretIndex = 0;
 
 #pragma region Function declarations
 
@@ -283,13 +285,13 @@ String decodeRemoteCode(uint32_t code) {
         }
         case PREV : {
             if (currentState.state > LOCKED) {
-                scrollPasswords(true);
+                scrollPasswords(false);
             }
             return "|<<";
         }
         case NEXT: {
             if (currentState.state > LOCKED) {
-                scrollPasswords(false);
+                scrollPasswords(true);
             }
             return ">>|";
         }
@@ -387,8 +389,8 @@ void initRemote() {
 void unlock() {
     printDebugInfoMessage("Unlocked");
     writeToDisplay(String(UNLOCKED), false, true, true);
-    writeToDisplay(currentState.secrets, false, false);
-    setState(UNLOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+    writeToDisplay(currentState.secrets.substring(secretIndex * 6 + secretIndex, (secretIndex + 1) * 6 + secretIndex), false, false);
+    setState(UNLOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
 }
 
 void lock() {
@@ -396,13 +398,13 @@ void lock() {
     writeToDisplay(String(LOCKED), false, true, true);
     writeToDisplay("seed:", false, false);
     generatePasswordBasedOnSeed();
-    setState(LOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+    setState(LOCKED, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
 }
 
 void wrongPassword(const String &reason) {
     printDebugInfoMessage("Wrong password, resetting: " + reason);
     writeToDisplay(String(LOCKED), false, true, true);
-    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2, "");
+    setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
 }
 
 bool isDigit(const String &word) {
@@ -417,10 +419,33 @@ void addPassword() {
 
 }
 
+int getNumberOfSecrets() {
+    int count = 0;
+    for (char secret: currentState.secrets)
+        if (secret == ' ') count++;
+    return count;
+}
+
 void scrollPasswords(bool right) {
     if (right) {
-        // scroll to right
+        printDebugInfoMessage("Scrolling passwords to the right.");
+        if (secretIndex < getNumberOfSecrets()) {
+            ++secretIndex;
+            writeToDisplay(currentState.secrets.substring(secretIndex * 6 + secretIndex, (secretIndex + 1) * 6 + secretIndex), false, false);
+            setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
+            printDebugInfoMessage("New password index: " + String(secretIndex));
+        } else {
+            printDebugInfoMessage("No more passwords found to the right.");
+        }
     } else {
-        // scroll to left
+        printDebugInfoMessage("Scrolling passwords to the left.");
+        if (secretIndex > 0) {
+            --secretIndex;
+            writeToDisplay(currentState.secrets.substring(secretIndex * 6 + secretIndex, (secretIndex + 1) * 6 + secretIndex), false, false);
+            setState(currentState.state, currentState.debuggingLevelEnabled, currentState.display, currentState.displayRow2);
+            printDebugInfoMessage("New password index: " + String(secretIndex));
+        } else {
+            printDebugInfoMessage("No more passwords found to the left.");
+        }
     }
 }
