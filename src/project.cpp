@@ -79,19 +79,6 @@
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D0, LCD_D1, LCD_D2, LCD_D3);
 IRrecv irrecv(IR_RECV_PIN);
 
-/*
- *
- * the program will have 4 states:
- * - [unlocked] lock system
- * - [unlocked] delete passwords (if any & will revert to a base password)
- * - [unlocked] add new password
- * - [locked] unlock system
- *
- * and also 2 modes:
- * locked / unlocked (bool)
- *
- */
-
 struct state {
     bool stateChanged = true;
     int32_t state = LOCKED; // 0 -> locked, 1 -> unlocked
